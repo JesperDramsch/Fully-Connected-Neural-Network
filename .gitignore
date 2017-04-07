@@ -47,7 +47,7 @@ Temporary Items
 .apdisk
 
 # Matlab
-.asv
+*.asv
 
 # Compiled MEX binaries (all platforms)
 *.mex*
@@ -59,4 +59,4 @@ slprj/
 octave-workspace
 
 # Simulink autosave extension
-.autosave
+*.autosave
