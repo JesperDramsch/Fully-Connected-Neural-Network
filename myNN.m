@@ -70,7 +70,7 @@ for epoch = 1:iterations
     hold on
 end
 
-sprintf('The total missclassification in the final run is %0.2f%%.',100-sum(round(out(:,2)) == data(:,4))/points*100)
+display(sprintf('The total missclassification in the final run is %0.2f%%.',100-sum(round(out(:,2)) == data(:,4))/points*100))
 
 hold off
 %% Plot
