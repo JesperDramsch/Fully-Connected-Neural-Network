@@ -12,6 +12,7 @@ neurons = 4; %+bias
 m = 2; %number of inputs
 y = 2; %number of outputs
 eta = .1;
+type = 'relu'
 
 figure
 plotNN(m,neurons,y,n_layers)
@@ -42,7 +43,7 @@ for epoch = 1:iterations
 %% Forward propagate 
         for layer = 1:n_layers-1
             a{layer} = w{layer}*z{layer}+b{layer};
-            z{layer+1}=max(a{layer},0);
+            z{layer+1}=activator(a{layer},type);
         end
 
         ea = exp(a{end});
@@ -53,7 +54,7 @@ for epoch = 1:iterations
 
 %% Backpropagate Delta j for hidden layers
         for hidden = n_layers-1:-1:2
-            delta{hidden} = w{hidden}' * delta{hidden+1}  .* (a{hidden-1}>0);
+            delta{hidden} = w{hidden}' * delta{hidden+1}  .* diffact(a{hidden-1},type);
         end
 %% Evaluate Derivatives
         for layer=2:n_layers
@@ -84,6 +85,3 @@ plot(data(id,1), data(id,2), 'g.', 'MarkerSize', 5);
 id = find(round(out(:,2)) ~= data(:,4));
 plot(data(id,1), data(id,2), 'g.', 'MarkerSize', 5);
 legend('Class 1', 'Class 2', 'Missclassified')
-
-
-
