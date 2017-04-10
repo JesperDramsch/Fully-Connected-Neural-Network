@@ -4,18 +4,18 @@ clc;
 format compact
 
 addpath('..')
-data = getDataNN(3,1000,.1,1);
+data = getDataNN(2,1000,.05,1);
 
 iterations = 100;
-n_layers = 3; %number of layers
+n_layers = 5; %number of layers
 neurons = 4; %+bias
 m = 2; %number of inputs
 y = 2; %number of outputs
 eta = 1e-2;
 type = 'relu' % sigmoid, tanh or relu
-mode = 'mini-batch' % batch, mini-batch or stochastic
+mode = 'stochastic' % batch, mini-batch or stochastic
 dropout = true; % Dropout flag
-
+adaptive = true; % Adaptive learning flag
 
 figure
 plotNN(m,neurons,y,n_layers)
@@ -44,7 +44,8 @@ switch mode
         warning(sprintf('%s is not a supported batch mode, switching to full batch.',mode))
 end
 
-figure
+
+eta_orig=eta;
 for epoch = 1:iterations
     out = zeros(size(data,1),y);
     i_data = randperm(sizedata);
@@ -54,7 +55,7 @@ for epoch = 1:iterations
         z=cell([n_layers, 1]);
         delta=z;
         if dropout
-            z{1}= [data(i_data(points),1:2).*(round(rand(size(data(i_data(points),1:2))).^.5)) ones(batchsize,1)];
+            z{1}= [data(i_data(points),1:2).*(round(1-rand(size(data(i_data(points),1:2))).^2)) ones(batchsize,1)];
         else
             z{1}= [data(i_data(points),1:2) ones(batchsize,1)];
         end
@@ -80,29 +81,17 @@ for epoch = 1:iterations
             deriv_E_w{layer} = delta{layer+1}'*z{layer};
             w{layer} = w{layer}-eta*deriv_E_w{layer};
         end
-        
-        out(i_data(points),:) = z{end};
     end
-%% Error calculation
-    
-    bar(epoch,sum(round(out(:,2)) == data(:,4))/sizedata*100)
-    ylim([0 100])
-    hold on
+	if adaptive
+    	%eta = eta * (iterations-epoch)/(iterations)
+        eta = .5 * eta_orig(1) * cos(.5*epoch*pi/iterations)^2+ .5* eta_orig(1);
+        eta_orig=[eta_orig;eta];
+    end
 end
-
-%% Plot
-figure
-id = find(out(:,1)>.5);
-plot(data(id,1), data(id,2), 'b.', 'MarkerSize', 20);
-hold on
-id = find(out(:,2)>.5);
-plot(data(id,1), data(id,2), 'r.', 'MarkerSize', 20);
-id = find(round(out(:,1)) ~= data(:,3));
-plot(data(id,1), data(id,2), 'g.', 'MarkerSize', 5);
-id = find(round(out(:,2)) ~= data(:,4));
-plot(data(id,1), data(id,2), 'g.', 'MarkerSize', 5);
-legend('Class 1', 'Class 2', 'Missclassified')
-
+if adaptive
+    figure
+    plot(eta_orig)
+end
 %% Test
 a=cell([n_layers-1, 1]);
 z=cell([n_layers, 1]);
@@ -117,7 +106,7 @@ out=z{end};
 
 display(sprintf('The total missclassification in the final run is %0.2f%%.',100-sum(round(out(:,2)) == data(:,4))/sizedata*100))
 
-hold off
+
 %% Plot
 figure
 id = find(out(:,1)>.5);
