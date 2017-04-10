@@ -12,7 +12,8 @@ neurons = 4; %+bias
 m = 2; %number of inputs
 y = 2; %number of outputs
 eta = .1;
-type = 'relu'
+type = 'banana' % sigmoid, tanh or relu
+mode = 'mini-batch' % batch, mini-batch or stochastic
 
 figure
 plotNN(m,neurons,y,n_layers)
@@ -30,6 +31,18 @@ for layers = 2:n_layers-2
 end
 w(n_layers-1) = {-unimod+2*unimod.*(rand([y, neurons]))};
 b(n_layers-1) = {rand([y,1])};
+
+switch mode
+    case 'mini-batch'
+        batchsize = 10;
+    case 'batch'
+    	batchsize = sizedata;
+	case 'stochastic'
+    	batchsize = 1;
+    otherwise
+        batchsize = sizedata;
+        warning(sprintf('%s is not a supported batch mode, switching to full batch.',mode))
+end
 
 figure
 for epoch = 1:iterations

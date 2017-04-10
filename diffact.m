@@ -6,5 +6,7 @@ function out=diffact(in,name) % derivative of activation function
             out=activator(in,name).*(1-activator(in,name));
         case 'tanh'
             out=1-activator(in,name).^2;
+        otherwise
+            out=(in>0);
     end
 end
