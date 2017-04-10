@@ -4,15 +4,12 @@ clc;
 format compact
 
 addpath('..')
-data = getDataNN(3,1000,.3,1);
 
-iterations = 5;
-n_layers = 4; %number of layers
+iterations = 10;
 neurons = 4; %+bias
 m = 2; %number of inputs
 y = 2; %number of outputs
-eta = .1;
-type = 'banana' % sigmoid, tanh or relu
+type = 'relu' % sigmoid, tanh or relu
 mode = 'mini-batch' % batch, mini-batch or stochastic
 
 figure
@@ -22,15 +19,12 @@ sizedata = size(data,1);
 unimod = m^-.5;
 
 w = cell([n_layers-1, 1]);
-b = cell([n_layers-1, 1]);
-w(1) = {-unimod+2*unimod.*(rand([neurons, m]))};
-b(1) = {rand([neurons, 1])};
+
+w(1) = {-unimod+2*unimod.*(rand([neurons, m+1]))};
 for layers = 2:n_layers-2
-    w(layers) = {-unimod+2*unimod.*(rand(neurons))};
-    b(layers) = {rand([neurons,1])};
+    w(layers) = {-unimod+2*unimod.*(rand(neurons,neurons+1))};
 end
-w(n_layers-1) = {-unimod+2*unimod.*(rand([y, neurons]))};
-b(n_layers-1) = {rand([y,1])};
+w(n_layers-1) = {-unimod+2*unimod.*(rand([y, neurons+1]))};
 
 switch mode
     case 'mini-batch'
@@ -47,43 +41,57 @@ end
 figure
 for epoch = 1:iterations
     out = zeros(size(data,1),y);
-    for points=1:sizedata;
+    for batch=1:floor(sizedata/batchsize);
+        points=(batch-1)*batchsize+1:(batch)*batchsize;
         a=cell([n_layers-1, 1]);
         z=cell([n_layers, 1]);
         delta=z;
-        z{1}= data(points,1:2)';
+        z{1}= [data(points,1:2) ones(batchsize,1)];
 
 %% Forward propagate 
         for layer = 1:n_layers-1
-            a{layer} = w{layer}*z{layer}+b{layer};
-            z{layer+1}=activator(a{layer},type);
+            a{layer} = z{layer}*w{layer}';
+            z{layer+1}=[activator(a{layer},type) ones(batchsize,1)];
         end
 
-        ea = exp(a{end});
-        z{n_layers}=ea./[sum(ea);sum(ea)];
+        z{n_layers}=softmax(a{end}')';
 
 %% Evaluate Delta k for output layer
-        delta{n_layers} = z{n_layers}-data(points,3:4)';
+        delta{n_layers} = z{n_layers}-data(points,3:4);
 
 %% Backpropagate Delta j for hidden layers
         for hidden = n_layers-1:-1:2
-            delta{hidden} = w{hidden}' * delta{hidden+1}  .* diffact(a{hidden-1},type);
+            delta{hidden} = delta{hidden+1} * w{hidden}(:,1:end-1) .* diffact(a{hidden-1},type);
         end
 %% Evaluate Derivatives
-        for layer=2:n_layers
-            deriv_E_w{layer} = delta{layer}*z{layer-1}';
-            w{layer-1} = w{layer-1}-eta*deriv_E_w{layer};
-            b{layer-1} = b{layer-1}-eta*delta{layer};
+        for layer=1:n_layers-1
+            deriv_E_w{layer} = delta{layer+1}'*z{layer};
+            w{layer} = w{layer}-eta*deriv_E_w{layer};
         end
+        
         out(points,:) = z{end};
     end
 %% Error calculation
     
-    bar(epoch,sum(round(out(:,2)) == data(:,4))/points*100)
+    bar(epoch,sum(round(out(:,2)) == data(:,4))/sizedata*100)
+    ylim([0 100])
     hold on
 end
 
-display(sprintf('The total missclassification in the final run is %0.2f%%.',100-sum(round(out(:,2)) == data(:,4))/points*100))
+a=cell([n_layers-1, 1]);
+z=cell([n_layers, 1]);
+delta=z;
+        z{1}= [data(:,1:2) ones(sizedata,1)];
+
+%% Forward propagate 
+for layer = 1:n_layers-1
+    a{layer} = z{layer}*w{layer}';
+	z{layer+1}=[activator(a{layer},type) ones(sizedata,1)];
+end
+
+z{n_layers}=softmax(a{end}')';
+
+display(sprintf('The total missclassification in the final run is %0.2f%%.',100-sum(round(out(:,2)) == data(:,4))/sizedata*100))
 
 hold off
 %% Plot
