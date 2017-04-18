@@ -3,9 +3,9 @@ function out=diffact(in,name) % derivative of activation function
         case 'relu'
             out=(in>0);
         case 'sigmoid'
-            out=activator(in,name).*(1-activator(in,name));
+            out=in.*(1-in);
         case 'tanh'
-            out=1-activator(in,name).^2;
+            out=1-in.^2;
         otherwise
             out=(in>0);
     end
