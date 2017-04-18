@@ -4,40 +4,42 @@ clc;
 format compact
 
 addpath('..')
-train = getDataNN(2,1000,.2,1);
-validate = getDataNN(2,1000,.2,0);
+data_type=1;
+data_points=1000;
+data_noise=.95;
+train = getDataNN(data_type,data_points,data_noise,1);
 
 data = train(:,1:2);
 labels = train(:,3:4);
 
-iterations = 100;
-n_layers = 3; %number of layers
+iterations = 1000;
+n_layers = 5; %number of layers
 neurons = 4; %+bias
 m = 2; %number of inputs
 y = 2; %number of outputs
-eta = 1e-2;
+eta = 1e-3; % Learning Rate
 type = 'relu' % sigmoid, tanh or relu
 mode = 'mini-batch' % batch, mini-batch or stochastic
 dropout = true; % Dropout flag
 adaptive = true; % Adaptive learning flag
-
+adaptive_mod=.2; % Adaptive end ratio
 
 
 sizedata = size(data,1);
-unimod = 1*m^-.5;
+
 best_cost = inf(1);
-w = cell([n_layers-1, 1]);
-w(1) = {-unimod+(unimod+unimod)*(rand([m+1, neurons]))};
-for layers = 2:n_layers-2
-    w(layers) = {-unimod+(unimod+unimod)*(rand(neurons+1,neurons))};
+
+w=weights_NN(m,y,neurons,n_layers);
+killer = true;
+while killer
+    try
+        check_gradients(data,labels,w,n_layers,type)
+    catch
+        w=weights_NN(m,y,neurons,n_layers);
+    	continue
+    end
+	killer=false;
 end
-w(n_layers-1) = {-unimod+(unimod+unimod)*(rand([neurons+1,y]))};
-
-check_gradients(data,labels,w,n_layers,type)
-counter=0;
-
-figure
-plotNN(m,neurons,y,n_layers)
 switch mode
     case 'mini-batch'
         batchsize = 25;
@@ -52,9 +54,10 @@ switch mode
     otherwise
         batchsize = sizedata;
         warning(sprintf('%s is not a supported batch mode, switching to full batch.',mode))
-end
+end 
 
-
+eta_res=0;
+counter=0;
 eta_orig=eta;
 for epoch = 1:iterations
     i_data = randperm(sizedata);
@@ -71,7 +74,7 @@ for epoch = 1:iterations
 
 %% Backward propagate
         deriv_E_w = backward_NN(z,labels(i_data(points),:),w,n_layers,type);
-
+        
 %% Evaluate Derivatives 
         for layer=1:n_layers-1
             w{layer} = w{layer}-eta*deriv_E_w{layer};
@@ -79,40 +82,71 @@ for epoch = 1:iterations
     end
     
 %% Validation
+    validate = getDataNN(data_type,data_points,data_noise,0);
     z = forward_NN([validate(:,1:2) ones(length(validate(:,1)),1)],w,n_layers,type);
     cost= costfunction(z{end},validate(:,3:4),'RMS');
     totalerror=100-sum(round(z{end}(:,2)) == validate(:,4))/sizedata*100;
     display(sprintf('Iteration: %i, Cost: %f; Error: %f%%',epoch, cost, totalerror))
     if cost < best_cost
         best_cost = cost;
+        counter = 0;
+        backup_w = w;
     else
         counter = counter +1;
-        if counter > iterations*.1
+        if counter == round(iterations*.05)
+            w=backup_w;
+        end
+        if mod(iterations,counter)==50
+            killer = true;
+            w=weights_NN(m,y,neurons,n_layers);
+            while killer
+                try
+                    check_gradients(data,labels,w,n_layers,type)
+                catch
+                    w=weights_NN(m,y,neurons,n_layers);
+                    continue
+                end
+                killer=false;
+                eta= eta_orig(1);
+                eta_res=epoch;
+            end
+                
+            
+        end
+        if counter > iterations*.35
             break
         end
     end
 %% Update Learning rate
     if adaptive
     	%eta = eta * (iterations-epoch)/(iterations)
-        eta = .5 * eta_orig(1) * cos(.5*epoch*pi/iterations)^2+ .5* eta_orig(1);
+        eta = (1-adaptive_mod) * eta_orig(1) * cos(2*.5*(epoch-eta_res)*pi/iterations)^2+ adaptive_mod* eta_orig(1);
         eta_orig=[eta_orig;eta];
     end
 end
+w=backup_w;
 
 
+data=validate(:,1:2);
+labels=validate(:,3:4);
+
+%% Test
+out = forward_NN([data ones(sizedata,1)],w,n_layers,type);
+out=out{end};
+totalerror=100-sum(round(out(:,2)) == labels(:,2))/sizedata*100;
+display(sprintf('The total missclassification in the best run is %0.2f%%.',totalerror))
+
+
+%% Plots
+
+figure
+plotNN(m,neurons,y,n_layers)
 
 if adaptive
     figure
     plot(eta_orig)
 end
-%% Test
-out = forward_NN([data ones(sizedata,1)],w,n_layers,type);
-out=out{end};
-totalerror=100-sum(round(out(:,2)) == labels(:,2))/sizedata*100;
-display(sprintf('The total missclassification in the final run is %0.2f%%.',totalerror))
 
-
-%% Plot
 figure
 id = find(out(:,1)>.5);
 plot(data(id,1), data(id,2), 'b.', 'MarkerSize', 20);
