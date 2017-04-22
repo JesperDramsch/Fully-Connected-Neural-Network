@@ -7,9 +7,9 @@ train = load('MNIST.mat');
 data = double(train.data);
 labels = double(train.label);
 
-iterations = 10;
-n_layers = 6; %number of layers
-neurons = 10; %+bias
+iterations = 1000;
+n_layers = 4; %number of layers
+neurons = 150; %+bias
 m = min(size(data)); %number of inputs
 y = min(size(labels)); %number of outputs
 eta = 1e-3; % Learning Rate
@@ -104,7 +104,7 @@ for epoch = 1:iterations
 %% Update Learning rate
     if adaptive
     	%eta = eta * (iterations-epoch)/(iterations)
-        eta = (1-adaptive_mod) * eta_orig(1) * cos(2*.5*(epoch-eta_res)*pi/iterations)^2+ adaptive_mod* eta_orig(1);
+        eta = (1-adaptive_mod) * eta_orig(1) * cos(.5*(epoch-eta_res)*pi/iterations)^2+ adaptive_mod* eta_orig(1);
         eta_orig=[eta_orig;eta];
     end
 end

@@ -1,5 +1,5 @@
 function check_gradients(in,labels,w,n_layers,activator_type)
-    eps = 1e-4;
+    eps = 1e-5;
     sizedata = size(in,1);
     z = forward_NN([in ones(sizedata ,1)],w,n_layers,activator_type);
 	deriv_E_w = backward_NN(z,labels,w,n_layers,activator_type);
