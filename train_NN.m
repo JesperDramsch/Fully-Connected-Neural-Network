@@ -7,9 +7,14 @@ train = load('MNIST.mat');
 data = double(train.data);
 labels = double(train.label);
 
-iterations = 1000;
+
+%indexes = randi([1 6000],1,5000);
+%data = double(train.data(indexes,:));
+%labels = double(train.label(indexes,:));
+
+iterations = 100;
 n_layers = 4; %number of layers
-neurons = 200; %+bias
+neurons = 150; %+bias
 m = min(size(data)); %number of inputs
 y = min(size(labels)); %number of outputs
 eta = 1e-5; % Learning Rate
@@ -17,8 +22,8 @@ acttype = 'relu' % sigmoid, tanh or relu
 mode = 'mini-batch' % batch, mini-batch or stochastic
 training = true;
 dropout = true; % Dropout flag
-dropout_in = .8;
-dropout_hidden = .5;
+dropout_val = [.2 0 .5];
+
 
 %% Condition MNIST
 [~,max_i_mnist] = max(labels,[],2);
@@ -33,7 +38,7 @@ delta_w=cellfun(@(x) x*0,w,'un',0);
 
 switch mode
     case 'mini-batch'
-        batchsize = 25;
+        batchsize = 50;
     case 'batch'
     	batchsize = sizedata;
         if (dropout && iterations<=5)
@@ -54,7 +59,7 @@ for epoch = 1:iterations
         points=(batch-1)*batchsize+1:(batch)*batchsize;
             
 %% Forward feed
-        z = forward_NN([data(i_data(points),:) ones(batchsize,1)],w,n_layers,acttype,training,dropout,dropout_in,dropout_hidden);
+        z = forward_NN([data(i_data(points),:) ones(batchsize,1)],w,n_layers,acttype,training,dropout,dropout_val);
 
 
 %% Backward propagate
@@ -67,11 +72,13 @@ for epoch = 1:iterations
     end
     
 %% Validation
+    %randval=indexes;
     randval = randi([1 60000],5000,1);
     validate = double(train.data(randval,:));
     validate_label = train.label(randval,:);
-    z = forward_NN([validate ones(length(validate(:,1)),1)],w,n_layers,acttype,false,dropout,dropout_in,dropout_hidden);
+    z = forward_NN([validate ones(length(validate(:,1)),1)],w,n_layers,acttype,false,dropout,dropout_val);
     cost= costfunction(z{end},validate_label,'RMS');
+    %totalerror=mnist_error(max_i_mnist(:),z{end});
     totalerror=mnist_error(max_i_mnist(randval),z{end});
     fprintf('Iteration: %i, Cost: %f; Error: %f%%\n',epoch, cost, totalerror)
     if cost < best_cost
@@ -80,13 +87,6 @@ for epoch = 1:iterations
         backup_w = w;
     else
         counter = counter +1;
-        if counter == round(iterations*.05)
-            w=backup_w;
-        end
-        if mod(iterations,counter)==50
-            w=weights_NN(m,y,neurons,n_layers);
-
-        end
         if counter > iterations*.35
             break
         end
@@ -101,10 +101,10 @@ data = double(train.data(indexes,:));
 labels = double(train.label(indexes,:));
 
 %% Test
-out = forward_NN([data ones(sizedata,1)],w,n_layers,acttype,training,dropout,dropout_in,dropout_hidden);
+out = forward_NN([data ones(sizedata,1)],w,n_layers,acttype,training,dropout,dropout_val);
 out=out{end};
 
-save('params.mat','w','n_layers','acttype','dropout','dropout_in','dropout_hidden')
+save('params.mat','w','n_layers','acttype','dropout','dropout_val')
 
 %% Plots
 %figure
