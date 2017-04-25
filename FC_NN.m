@@ -1,21 +1,20 @@
-
 close all
 clear all
 clc;
 format compact
-diary('FC_NN.log')
-diary on
-train = load('MNIST_train.mat');
-data = double(train.data);
-labels = double(train.label);
 
+train = load('MNIST_train.mat');
+labels = double(train.label);
+data = double(train.data);
 %indexes = randi([1 6000],1,5000);
 %data = double(train.data(indexes,:));
 %labels = double(train.label(indexes,:));
 
+
+
 iterations = 1000;
-n_layers = 4; %number of layers 
-neurons = 400; %+bias
+n_layers = 3; %number of layers 
+neurons = 800; %+bias
 m = min(size(data)); %number of inputs
 y = min(size(labels)); %number of outputs
 eta = 1e-6; % Learning Rate
@@ -23,12 +22,11 @@ acttype = 'relu' % sigmoid, tanh or relu
 mode = 'mini-batch' % batch, mini-batch or stochastic
 training = true;
 dropout = true; % Dropout flag
-dropout_val = [0 .2 .5 .2 ];
-
+dropout_val = [.2 .5];
+outname='params.mat';
 
 %% Condition MNIST
 [~,max_i_mnist] = max(labels,[],2);
-
 
 %% Epoch
 
@@ -52,7 +50,7 @@ switch mode
         batchsize = sizedata;
         warning('%s is not a supported batch mode, switching to full batch.',mode)
 end 
-
+backup_w={};
 counter=0;
 for epoch = 1:iterations
     i_data = randperm(sizedata+10000);
@@ -86,7 +84,7 @@ for epoch = 1:iterations
     if cost < best_cost
         if epoch>50 && totalerror < 5
         fprintf('Saving\n') 
-        save('params.mat','w','n_layers','acttype','dropout','dropout_val')
+        parsave(outname,w,n_layers,acttype,dropout,dropout_val)
         fprintf('Done\n')
         end
         best_cost = cost;
@@ -103,9 +101,8 @@ for epoch = 1:iterations
 end
 w=backup_w;
 
-save('params.mat','w','n_layers','acttype','dropout','dropout_val')
+parsave(outname,w,n_layers,acttype,dropout,dropout_val)
 fprintf('Finished.')
 %% Plots
 %figure
 %plotNN(m,neurons,y,n_layers)
-diary off

@@ -25,7 +25,7 @@ alpha=60;
 H=fspecial('gauss',[7 7], sig);
 fdx=imfilter(dx,H);
 fdy=imfilter(dy,H);
-n=sum((fdx(:).^2+fdy(:).^2)); %// norm (?) not quite sure about this "norm"
+n=sum((fdx(:).^2+fdy(:).^2)); 
 fdx=alpha*fdx./n;
 fdy=alpha*fdy./n;
 
@@ -34,16 +34,6 @@ fdy=alpha*fdy./n;
 new(:,:,layer) = griddata(x-fdx,y-fdy,double(img),x,y);
 end
 new(isnan(new))=0;
-
-figure;
-imagesc(img(:,:,end)); colormap gray; axis image; axis tight;
-hold on;
-quiver(x,y,fdx(:,:),fdy(:,:),0,'r');
-
-figure;
-subplot(121); imagesc(img); axis image;
-subplot(122); imagesc(new(:,:,end)); axis image;
-colormap gray
 
 data=[train.data; reshape(ipermute(new,[2 3 1]),[],28*28)];
 
