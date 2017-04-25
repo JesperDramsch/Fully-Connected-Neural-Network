@@ -1,28 +1,29 @@
+
 close all
 clear all
 clc;
 format compact
-
-train = load('MNIST.mat');
+diary('FC_NN.log')
+diary on
+train = load('MNIST_train.mat');
 data = double(train.data);
 labels = double(train.label);
-
 
 %indexes = randi([1 6000],1,5000);
 %data = double(train.data(indexes,:));
 %labels = double(train.label(indexes,:));
 
-iterations = 100;
-n_layers = 4; %number of layers
-neurons = 150; %+bias
+iterations = 1000;
+n_layers = 4; %number of layers 
+neurons = 400; %+bias
 m = min(size(data)); %number of inputs
 y = min(size(labels)); %number of outputs
-eta = 1e-5; % Learning Rate
+eta = 1e-6; % Learning Rate
 acttype = 'relu' % sigmoid, tanh or relu
 mode = 'mini-batch' % batch, mini-batch or stochastic
 training = true;
 dropout = true; % Dropout flag
-dropout_val = [.2 0 .5];
+dropout_val = [0 .2 .5 .2 ];
 
 
 %% Condition MNIST
@@ -31,7 +32,7 @@ dropout_val = [.2 0 .5];
 
 %% Epoch
 
-sizedata = max(size(data));
+sizedata = max(size(data))-10000;
 best_cost = inf(1);
 w=weights_NN(m,y,neurons,n_layers);
 delta_w=cellfun(@(x) x*0,w,'un',0);
@@ -54,16 +55,17 @@ end
 
 counter=0;
 for epoch = 1:iterations
-    i_data = randperm(sizedata);
+    i_data = randperm(sizedata+10000);
+    i_test = i_data(1:sizedata);
     for batch=1:floor(sizedata/batchsize)
         points=(batch-1)*batchsize+1:(batch)*batchsize;
             
 %% Forward feed
-        z = forward_NN([data(i_data(points),:) ones(batchsize,1)],w,n_layers,acttype,training,dropout,dropout_val);
+        z = forward_NN([data(i_test(points),:) ones(batchsize,1)],w,n_layers,acttype,training,dropout,dropout_val);
 
 
 %% Backward propagate
-        deriv_E_w = backward_NN(z,labels(i_data(points),:),w,n_layers,acttype);
+        deriv_E_w = backward_NN(z,labels(i_test(points),:),w,n_layers,acttype);
         
 %% Evaluate Derivatives
         new_w = update_NN(w,delta_w,deriv_E_w,n_layers,eta);
@@ -73,18 +75,24 @@ for epoch = 1:iterations
     
 %% Validation
     %randval=indexes;
-    randval = randi([1 60000],5000,1);
-    validate = double(train.data(randval,:));
-    validate_label = train.label(randval,:);
+    i_validate = i_data(sizedata+1:end);
+    validate = double(data(i_validate,:));
+    validate_label = train.label(i_validate,:);
     z = forward_NN([validate ones(length(validate(:,1)),1)],w,n_layers,acttype,false,dropout,dropout_val);
     cost= costfunction(z{end},validate_label,'RMS');
     %totalerror=mnist_error(max_i_mnist(:),z{end});
-    totalerror=mnist_error(max_i_mnist(randval),z{end});
+    totalerror=mnist_error(max_i_mnist(i_validate),z{end});
     fprintf('Iteration: %i, Cost: %f; Error: %f%%\n',epoch, cost, totalerror)
     if cost < best_cost
+        if epoch>50 && totalerror < 5
+        fprintf('Saving\n') 
+        save('params.mat','w','n_layers','acttype','dropout','dropout_val')
+        fprintf('Done\n')
+        end
         best_cost = cost;
         counter = 0;
         backup_w = w;
+        
     else
         counter = counter +1;
         if counter > iterations*.35
@@ -95,17 +103,9 @@ for epoch = 1:iterations
 end
 w=backup_w;
 
-%% Wrap it up
-indexes = randi([1 6000],1,sizedata);
-data = double(train.data(indexes,:));
-labels = double(train.label(indexes,:));
-
-%% Test
-out = forward_NN([data ones(sizedata,1)],w,n_layers,acttype,training,dropout,dropout_val);
-out=out{end};
-
 save('params.mat','w','n_layers','acttype','dropout','dropout_val')
-
+fprintf('Finished.')
 %% Plots
 %figure
 %plotNN(m,neurons,y,n_layers)
+diary off
